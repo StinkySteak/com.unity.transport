@@ -11,6 +11,7 @@ using Unity.Jobs;
 using Unity.Networking.Transport.Logging;
 using ErrorState = Unity.Baselib.LowLevel.Binding.Baselib_ErrorState;
 using ErrorCode = Unity.Baselib.LowLevel.Binding.Baselib_ErrorCode;
+using System.Runtime.InteropServices;
 
 namespace Unity.Networking.Transport
 {
@@ -97,6 +98,55 @@ namespace Unity.Networking.Transport
                 errorState = error;
                 return socket;
             }
+
+#if UNITY_STANDALONE_LINUX
+            [DllImport("libc")]
+            public static extern int setsockopt(
+                IntPtr socket,
+                int level,
+                int optname,
+                ref int optval,
+                int optlen
+            );
+
+            public static void SetTcpNoDelay(IntPtr socketHandle)
+            {
+                const int IPPROTO_TCP = 6; // Protocol level
+                const int TCP_NODELAY = 1; // Option name
+
+                int noDelay = 1; // Disable Nagle's algorithm
+                int result = setsockopt(socketHandle, IPPROTO_TCP, TCP_NODELAY, ref noDelay, sizeof(int));
+
+                if (result != 0)
+                {
+                    throw new InvalidOperationException("Failed to set TCP_NODELAY.");
+                }
+            }
+#endif
+#if UNITY_STANDALONE_WIN
+            [DllImport("ws2_32.dll")]
+            public static extern int setsockopt(
+                IntPtr socket,
+                int level,
+                int optname,
+                ref int optval,
+                int optlen
+            );
+
+            const int IPPROTO_TCP = 6;
+            const int TCP_NODELAY = 0x0001;
+
+            public static void SetTcpNoDelay(IntPtr socketHandle)
+            {
+                int noDelay = 1; // Disable Nagle's algorithm
+                int result = setsockopt(socketHandle, 6 /* SOL_SOCKET */, TCP_NODELAY, ref noDelay, sizeof(int));
+
+                if (result != 0)
+                {
+                    throw new InvalidOperationException("Failed to set TCP_NODELAY.");
+                }
+            }
+#endif
 
             public static unsafe NetworkSocket Accept(NetworkSocket listenSocket, out NetworkEndpoint localEndpoint)
             {
