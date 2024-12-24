@@ -76,6 +76,7 @@ namespace Unity.Networking.Transport
                 var endpoint = localEndpoint;
                 var address = endpoint.BaselibAddressPtr;
                 var socket = Binding.Baselib_Socket_Create((Binding.Baselib_NetworkAddress_Family)address->family, Binding.Baselib_Socket_Protocol.TCP, &error);
+                SetTcpNoDelay(socket.handle);
                 if (error.code == ErrorCode.Success)
                 {
                     Binding.Baselib_Socket_Bind(socket, address, Binding.Baselib_NetworkAddress_AddressReuse.Allow, &error);
@@ -99,7 +100,7 @@ namespace Unity.Networking.Transport
                 return socket;
             }
 
-#if UNITY_STANDALONE_LINUX
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
             [DllImport("libc")]
             public static extern int setsockopt(
                 IntPtr socket,
@@ -122,8 +123,7 @@ namespace Unity.Networking.Transport
                     throw new InvalidOperationException("Failed to set TCP_NODELAY.");
                 }
             }
-#endif
-#if UNITY_STANDALONE_WIN
+#elif UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             [DllImport("ws2_32.dll")]
             public static extern int setsockopt(
                 IntPtr socket,
@@ -145,6 +145,11 @@ namespace Unity.Networking.Transport
                 {
                     throw new InvalidOperationException("Failed to set TCP_NODELAY.");
                 }
+            }
+#else
+            public static void SetTcpNoDelay(IntPtr socketHandle)
+            {
+                throw new Exception("Platform is not supported to disable TCP Delay");
             }
 #endif
 
