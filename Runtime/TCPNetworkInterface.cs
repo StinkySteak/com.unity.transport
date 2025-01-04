@@ -129,6 +129,13 @@ namespace Unity.Networking.Transport
                 if (error.code == ErrorCode.Success)
                 {
                     Binding.Baselib_Socket_TCP_Connect(socket, address, Binding.Baselib_NetworkAddress_AddressReuse.Allow, &error);
+
+                    ErrorState errorGetAddress = default;
+                    Binding.Baselib_Socket_GetAddress(socket, address, &errorGetAddress);
+
+                    int port = (address->port0 << 8) | address->port1;
+
+                    UnityEngine.Debug.Log($"Client socket address: {port} IP: {address->ipv4_0}.{address->ipv4_1}.{address->ipv4_2}.{address->ipv4_3}");
                 }
 
                 if (error.code != ErrorCode.Success)
